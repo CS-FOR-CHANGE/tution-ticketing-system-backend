@@ -22,6 +22,7 @@ Markdown==3.5.2
 msgpack==1.0.8
 packaging==24.0
 pillow==10.2.0
+psycopg2==2.9.9
 pyasn1==0.6.0
 pyasn1_modules==0.4.0
 pycparser==2.21
