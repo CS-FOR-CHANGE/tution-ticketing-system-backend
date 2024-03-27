@@ -22,10 +22,12 @@ ALLOWED_HOSTS = ["*"]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "https://ticketing.up.railway.app",
     'https://tutoring-ticketing-backend.up.railway.app',
 ]
 CSRF_TRUSTED_ORIGINS = [
     'https://tutoring-ticketing-backend.up.railway.app',
+    "https://ticketing.up.railway.app",
 ]
 
 USERNAME_FIELD = 'email'
