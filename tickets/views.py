@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import json
+from django.http import Http404
 
 
 class SubjectListView(APIView):
@@ -40,6 +41,8 @@ class TicketListView(APIView):
 
 class TicketCreateAPIView(APIView):
     # Create a ticket
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         from Users.models import Student, Tutor
@@ -70,11 +73,16 @@ class TicketCreateAPIView(APIView):
 
                     # Now broadcast the new ticket to all connected WebSocket clients
                     channel_layer = get_channel_layer()
+                    message = {
+                        'action': 'added',
+                        'message': json.dumps(TicketSerializer(ticket).data)
+                    }
+                    
                     async_to_sync(channel_layer.group_send)(
                         "ticket_updates",
                         {
                             "type": "broadcast_message",
-                            "message": json.dumps(TicketSerializer(ticket).data)
+                            "message": message
                         }
                     )
 
@@ -84,3 +92,56 @@ class TicketCreateAPIView(APIView):
                                 status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TicketDeleteAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    """
+    View to delete a Ticket instance by ID.
+    """
+
+    def get_object(self, pk):
+        """
+        Helper method to get the object, or raise a 404 if not found.
+        """
+        try:
+            return Ticket.objects.get(pk=pk)
+        except Ticket.DoesNotExist:
+            raise Http404
+
+    def delete(self, request, pk, format=None):
+        """
+        Attempts to delete the Ticket instance corresponding to the given pk (primary key).
+        Returns a success message if deleted successfully, or an error message if an error occurs.
+        """
+        try:
+            ticket = self.get_object(pk)
+            
+            channel_layer = get_channel_layer()
+            message = {
+                'action': 'deleted',
+                'message': json.dumps(TicketSerializer(ticket).data)
+            }
+            
+            async_to_sync(channel_layer.group_send)(
+                "ticket_updates",
+                {
+                    "type": "broadcast_message",
+                    "message": message
+                }
+            )
+            
+            ticket.delete()
+            return Response({"message": "Ticket successfully deleted."}, status=status.HTTP_200_OK)
+        except Http404:
+            # The ticket does not exist
+            return Response({"error": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            # Generic exception handling for other unforeseen errors
+            # Logging the exception can be helpful for debugging
+            # Consider using logging instead of print in production environments
+            print(f"Error deleting ticket: {e}")
+            return Response({"error": "An error occurred while attempting to delete the ticket. Please try again later."},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)

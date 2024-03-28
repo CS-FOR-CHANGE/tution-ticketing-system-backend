@@ -10,6 +10,7 @@ from .serializers import (
 )
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 # Create your views here.
@@ -133,3 +134,29 @@ class StudentTokenObtainPairView(TokenObtainPairView):
             response.data['user_role'] = user_role
 
         return response
+
+
+class LogoutAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        try:
+            # Get the refresh token from request data
+            # Using .get() to avoid KeyError
+            refresh_token = request.data.get("refresh_token")
+            if refresh_token is None:
+                # If refresh token is missing in the request
+                return JsonResponse({"error": "Refresh token is missing."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # For debugging purposes; consider removing in production
+            print(request.data)
+            token = RefreshToken(refresh_token)
+            token.blacklist()  # Blacklist the token
+
+            return JsonResponse({"message": "Successfully logged out."}, status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            # Log the exception or handle it as needed
+            print(e)  # Consider using logging instead of print in production
+
+            # Return a more informative error response
+            return JsonResponse({"error": "Failed to logout. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
