@@ -117,7 +117,14 @@ class TicketDeleteAPIView(APIView):
         Returns a success message if deleted successfully, or an error message if an error occurs.
         """
         try:
+            user = request.user
             ticket = self.get_object(pk)
+            
+            # Check if the request.user is the student or the tutor of the ticket
+            if request.user != ticket.student.user and request.user != ticket.tutor.user:
+                # If the user is neither the student nor the tutor, deny access
+                return Response({"error": "You do not have permission to delete this ticket."},
+                                status=status.HTTP_403_FORBIDDEN)
             
             channel_layer = get_channel_layer()
             message = {
@@ -142,6 +149,5 @@ class TicketDeleteAPIView(APIView):
             # Generic exception handling for other unforeseen errors
             # Logging the exception can be helpful for debugging
             # Consider using logging instead of print in production environments
-            print(f"Error deleting ticket: {e}")
             return Response({"error": "An error occurred while attempting to delete the ticket. Please try again later."},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -149,14 +149,11 @@ class LogoutAPIView(APIView):
                 return JsonResponse({"error": "Refresh token is missing."}, status=status.HTTP_400_BAD_REQUEST)
 
             # For debugging purposes; consider removing in production
-            print(request.data)
             token = RefreshToken(refresh_token)
             token.blacklist()  # Blacklist the token
 
             return JsonResponse({"message": "Successfully logged out."}, status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             # Log the exception or handle it as needed
-            print(e)  # Consider using logging instead of print in production
-
             # Return a more informative error response
             return JsonResponse({"error": "Failed to logout. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
