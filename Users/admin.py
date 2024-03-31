@@ -42,9 +42,30 @@ class TutorAdminForm(forms.ModelForm):
 
 class TutorAdmin(admin.ModelAdmin):
     form = TutorAdminForm
+    search_fields = ['user__email', 'name', 'pronouns']
+
+    # Customizes what columns to display in the list view, and adds user email
+    list_display = ('name', 'pronouns', 'user_email')
     # Optionally, you can specify which fields to show in the form explicitly
     # fields = ('name', 'pronouns', 'photo', 'tickets', 'email', 'password')
+    # Method to display the user's email in the list_display
+
+    def user_email(self, instance):
+        return instance.user.email
+    user_email.short_description = 'Email'
+
+
+class StudentAdmin(admin.ModelAdmin):
+    # Specifies the fields that should be searchable
+    search_fields = ['user__email', 'name', 'pronouns']
+
+    # Example of list display, customize as needed
+    list_display = ('name', 'user_email', 'pronouns')
+
+    def user_email(self, instance):
+        return instance.user.email
+    user_email.short_description = 'User Email'
 
 
 admin.site.register(Tutor, TutorAdmin)
-admin.site.register(Student)
+admin.site.register(Student, StudentAdmin)
