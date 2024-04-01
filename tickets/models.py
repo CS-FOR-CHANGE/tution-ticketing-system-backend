@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 # Create your models here.
 
@@ -31,8 +32,15 @@ class Ticket(models.Model):
         "Users.Tutor", on_delete=models.CASCADE, related_name='tutor_ticket', default=1)
     subject = models.ForeignKey(
         'Subject', on_delete=models.CASCADE, related_name='subject_ticket', default=1)
-    session_time = models.DurationField(
-        help_text='Duration of the session in [DD] [HH:[MM:]]ss[.uuuuuu] format')
+    start_time = models.DateTimeField(
+        default=timezone.now, help_text="The start time of the session")
+    end_time = models.DateTimeField(help_text="The end time of the session")
+
+    def save(self, *args, **kwargs):
+        """Override the save method to set the end time 10 minutes after the start time."""
+        if not self.id:  # Check if this is a new instance
+            self.end_time = self.start_time + timezone.timedelta(minutes=10)
+        super(Ticket, self).save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.subject.title} session for {self.student.name} with {self.tutor.name}"
@@ -48,5 +56,6 @@ class TicketingCode(models.Model):
     def save(self, *args, **kwargs):
         if TicketingCode.objects.exists() and not self.pk:
             # If you're trying to save a new instance and an instance already exists, raise an exception
-            raise ValidationError('There can be only one TicketingCode instance')
+            raise ValidationError(
+                'There can be only one TicketingCode instance')
         return super().save(*args, **kwargs)

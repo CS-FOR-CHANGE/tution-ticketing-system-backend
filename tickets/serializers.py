@@ -22,7 +22,8 @@ class TicketSerializer(serializers.ModelSerializer):
     student = StudentSerializer(read_only=True)
     tutor = TutorSerializer(read_only=True)
     subject = SubjectSerializer(read_only=True)
+    end_time = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = Ticket
-        fields = ['id', 'student', 'tutor', 'subject', 'session_time']
+        fields = ['id', 'student', 'tutor', 'subject', 'start_time', 'end_time']
