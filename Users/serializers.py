@@ -10,17 +10,28 @@ from rest_framework.exceptions import AuthenticationFailed
 
 
 class StudentSerializer(serializers.ModelSerializer):
+    user_email = serializers.SerializerMethodField()
+    
     class Meta:
         model = Student
-        fields = ['id', 'name', 'pronouns', 'photo']
+        fields = ['id', 'name', 'pronouns', 'photo', 'user_email']
+        
+    def get_user_email(self, obj):
+        # Return the email of the related user
+        return obj.user.email
 
 
 class TutorSerializer(serializers.ModelSerializer):
+    user_email = serializers.SerializerMethodField()
     tickets = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
     class Meta:
         model = Tutor
-        fields = ['id', 'name', 'pronouns', 'photo', 'tickets']
+        fields = ['id', 'name', 'pronouns', 'photo', 'tickets', 'user_email']
+        
+    def get_user_email(self, obj):
+        # Return the email of the related user
+        return obj.user.email
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

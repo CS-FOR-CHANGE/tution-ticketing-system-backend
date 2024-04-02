@@ -1,8 +1,8 @@
 from django.urls import path
 from .views import (
-    UserDataView, TutorListView, UserRegistrationView, 
+    UserDataView, TutorListView, UserRegistrationView,
     TutorTokenObtainPairView, StudentTokenObtainPairView,
-    LogoutAPIView
+    LogoutAPIView, ProfileUpdateAPIView
 )
 
 urlpatterns = [
@@ -13,5 +13,7 @@ urlpatterns = [
          name='tutor_token_obtain_pair'),
     path('token/student/', StudentTokenObtainPairView.as_view(),
          name='student_token_obtain_pair'),
-    path('user/logout/', LogoutAPIView.as_view(), name='logout')
+    path('user/logout/', LogoutAPIView.as_view(), name='logout'),
+    path('user/update-profile/', ProfileUpdateAPIView.as_view(),
+         name='update_profile'),
 ]

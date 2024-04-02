@@ -11,6 +11,9 @@ from .serializers import (
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.models import User
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 # Create your views here.
@@ -157,3 +160,51 @@ class LogoutAPIView(APIView):
             # Log the exception or handle it as needed
             # Return a more informative error response
             return JsonResponse({"error": "Failed to logout. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProfileUpdateAPIView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user  # Directly use the authenticated user
+        new_email = request.data.get('user_email').strip().lower()
+
+        # Ensure new email is unique across all users, except for the current user
+        if new_email and User.objects.exclude(pk=user.pk).filter(email=new_email).exists():
+            return Response({"errors": {"user_email": ["This email is already in use."]}}, status=400)
+
+        # Try to find Tutor or Student linked to the user
+        tutor = Tutor.objects.filter(user=user).first()
+        student = Student.objects.filter(user=user).first()
+
+        # Update email only if it's new to avoid unnecessary database hits
+        if new_email and user.email != new_email:
+            user.email = new_email
+            user.save()
+
+        if tutor:
+            # Update tutor specific fields
+            tutor.name = request.data.get('name', tutor.name)
+            tutor.pronouns = request.data.get('pronouns', tutor.pronouns)
+            photo = request.FILES.get('photo')
+            if photo:
+                tutor.photo = photo
+            tutor.save()
+
+            return Response({"message": "Tutor profile updated successfully"}, status=200)
+
+        elif student:
+            # Update student specific fields
+            student.name = request.data.get('name', student.name)
+            student.pronouns = request.data.get('pronouns', student.pronouns)
+            photo = request.FILES.get('photo')
+            if photo:
+                student.photo = photo
+            student.save()
+
+            return Response({"message": "Student profile updated successfully"}, status=200)
+
+        else:
+            return Response({"errors": {"general": ["User is neither a Tutor nor a Student"]}}, status=404)
