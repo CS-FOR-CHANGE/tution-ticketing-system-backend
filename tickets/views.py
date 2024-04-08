@@ -1,13 +1,14 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Subject, Ticket, Organization, TicketingCode
+from .models import Subject, Ticket, Organization, TicketingCode, OrganizationTutor
 from .serializers import SubjectSerializer, TicketSerializer, OrganizationSerializer
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 import json
+from django.shortcuts import get_object_or_404
 from django.http import Http404
 
 
@@ -16,7 +17,8 @@ class SubjectListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
-        subjects = Subject.objects.all()
+        # Filter subjects to only include those that are active
+        subjects = Subject.objects.filter(is_active=True)
         serializer = SubjectSerializer(subjects, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -26,6 +28,30 @@ class OrganizationListView(APIView):
         organizations = Organization.objects.all()
         serializer = OrganizationSerializer(organizations, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class UpdateTutorStatusView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, organization_id, tutor_id):
+        # Attempt to retrieve the OrganizationTutor instance
+        organization_tutor = get_object_or_404(
+            OrganizationTutor, organization_id=organization_id, tutor_id=tutor_id)
+
+        # Extract the is_active status from the request data
+        is_active = request.data.get('is_active', "").lower() == "true"
+
+        # Validate is_active is provided and is a boolean
+        if is_active is None or type(is_active) is not bool:
+            return Response({'error': 'The "is_active" field must be a boolean.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update the is_active status
+        organization_tutor.is_active = is_active
+        organization_tutor.save()
+
+        # Return the updated status
+        return Response({'is_active': is_active})
 
 
 class TicketListView(APIView):
@@ -77,7 +103,7 @@ class TicketCreateAPIView(APIView):
                         'action': 'added',
                         'message': json.dumps(TicketSerializer(ticket).data)
                     }
-                    
+
                     async_to_sync(channel_layer.group_send)(
                         "ticket_updates",
                         {
@@ -97,7 +123,7 @@ class TicketCreateAPIView(APIView):
 class TicketDeleteAPIView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    
+
     """
     View to delete a Ticket instance by ID.
     """
@@ -119,19 +145,19 @@ class TicketDeleteAPIView(APIView):
         try:
             user = request.user
             ticket = self.get_object(pk)
-            
+
             # Check if the request.user is the student or the tutor of the ticket
             if request.user != ticket.student.user and request.user != ticket.tutor.user:
                 # If the user is neither the student nor the tutor, deny access
                 return Response({"error": "You do not have permission to delete this ticket."},
                                 status=status.HTTP_403_FORBIDDEN)
-            
+
             channel_layer = get_channel_layer()
             message = {
                 'action': 'deleted',
                 'message': json.dumps(TicketSerializer(ticket).data)
             }
-            
+
             async_to_sync(channel_layer.group_send)(
                 "ticket_updates",
                 {
@@ -139,7 +165,7 @@ class TicketDeleteAPIView(APIView):
                     "message": message
                 }
             )
-            
+
             ticket.delete()
             return Response({"message": "Ticket successfully deleted."}, status=status.HTTP_200_OK)
         except Http404:

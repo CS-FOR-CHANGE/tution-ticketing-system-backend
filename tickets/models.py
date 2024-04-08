@@ -13,7 +13,38 @@ class Organization(models.Model):
         return self.name
 
 
+class OrganizationTutor(models.Model):
+    tutor = models.ForeignKey("Users.Tutor", on_delete=models.CASCADE)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name='organization_tutors')
+    is_active = models.BooleanField(default=True)
+
+    def save(self, *args, **kwargs):
+        if self.is_active:
+            # Deactivate the tutor in other organizations
+            OrganizationTutor.objects.filter(
+                tutor=self.tutor, 
+                is_active=True
+            ).exclude(
+                id=self.id
+            ).update(is_active=False)
+
+        super().save(*args, **kwargs)
+
+    class Meta:
+        unique_together = ('tutor', 'organization')
+
+    def __str__(self):
+        return f"{self.tutor.name} at {self.organization.name} - {'Active' if self.is_active else 'Inactive'}"
+
+
+# Now, we add the tutors field to the Organization model using the through model.
+Organization.add_to_class('tutors', models.ManyToManyField(
+    "Users.Tutor", through=OrganizationTutor, related_name='organizations'))
+
+
 class Subject(models.Model):
+    is_active = models.BooleanField(default=True)
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     organization = models.ForeignKey(
