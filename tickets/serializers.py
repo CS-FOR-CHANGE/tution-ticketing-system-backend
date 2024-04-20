@@ -42,13 +42,14 @@ class SubjectSerializer(serializers.ModelSerializer):
 
         # Next, filter these tutors further to only include those who are active in the subject's organization
         active_organization_tutors = OrganizationTutor.objects.filter(
-            tutor__in=subject_tutors, 
-            organization=obj.organization, 
+            tutor__in=subject_tutors,
+            organization=obj.organization,
             is_active=True
         ).select_related('tutor')
 
         # Extracting Tutor instances from these active organization-tutor relationships
-        active_tutors = [org_tutor.tutor for org_tutor in active_organization_tutors]
+        active_tutors = [
+            org_tutor.tutor for org_tutor in active_organization_tutors]
 
         # Now serialize the filtered queryset of Tutors
         return TutorSerializer(active_tutors, many=True, context={'request': self.context.get('request')}).data
@@ -63,4 +64,4 @@ class TicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
         fields = ['id', 'student', 'tutor',
-                  'subject', 'start_time', 'end_time']
+                  'subject', 'start_time', 'end_time', 'status']

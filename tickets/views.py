@@ -177,3 +177,38 @@ class TicketDeleteAPIView(APIView):
             # Consider using logging instead of print in production environments
             return Response({"error": "An error occurred while attempting to delete the ticket. Please try again later."},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class TicketStatusUpdateView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        ticket = get_object_or_404(Ticket, pk=pk)
+
+        if ticket.tutor.user != request.user:
+            return Response({'error': 'You are not authorized to change this ticket'}, status=status.HTTP_403_FORBIDDEN)
+
+        statusT = request.data.get('status', None)
+        
+        if statusT in [choice[0] for choice in Ticket.STATUS_CHOICES]:
+            ticket.status = statusT
+            ticket.save()
+
+            # Now broadcast the new ticket to all connected WebSocket clients
+            channel_layer = get_channel_layer()
+            message = {
+                'action': 'update',
+                'message': json.dumps(TicketSerializer(ticket).data)
+            }
+
+            async_to_sync(channel_layer.group_send)(
+                "ticket_updates",
+                {
+                    "type": "broadcast_message",
+                    "message": message
+                }
+            )
+            return Response({'status': "Changed"}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Invalid status'}, status=status.HTTP_400_BAD_REQUEST)

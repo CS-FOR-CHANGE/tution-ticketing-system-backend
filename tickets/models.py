@@ -23,7 +23,7 @@ class OrganizationTutor(models.Model):
         if self.is_active:
             # Deactivate the tutor in other organizations
             OrganizationTutor.objects.filter(
-                tutor=self.tutor, 
+                tutor=self.tutor,
                 is_active=True
             ).exclude(
                 id=self.id
@@ -57,6 +57,12 @@ class Subject(models.Model):
 
 
 class Ticket(models.Model):
+    STATUS_CHOICES = (
+        ('waiting', 'Waiting'),
+        ('ready', 'Ready for Help'),
+        ('helping', 'Helping'),
+    )
+
     student = models.ForeignKey(
         "Users.Student", on_delete=models.CASCADE, related_name='student_ticket', default=1)
     tutor = models.ForeignKey(
@@ -66,6 +72,8 @@ class Ticket(models.Model):
     start_time = models.DateTimeField(
         default=timezone.now, help_text="The start time of the session")
     end_time = models.DateTimeField(help_text="The end time of the session")
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default='waiting', help_text="Current status of the ticket")
 
     def save(self, *args, **kwargs):
         """Override the save method to set the end time 10 minutes after the start time."""

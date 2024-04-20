@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
     SubjectListView, TicketCreateAPIView, TicketListView,
-    OrganizationListView, TicketDeleteAPIView, UpdateTutorStatusView
+    OrganizationListView, TicketDeleteAPIView, UpdateTutorStatusView,
+    TicketStatusUpdateView
 )
 
 urlpatterns = [
@@ -14,4 +15,6 @@ urlpatterns = [
          TicketDeleteAPIView.as_view(), name='ticket-delete'),
     path('organization/<int:organization_id>/tutor/<int:tutor_id>/status/',
          UpdateTutorStatusView.as_view(), name='update-tutor-status'),
+    path('ticket/<int:pk>/status/', TicketStatusUpdateView.as_view(),
+         name='ticket-status-update'),
 ]
